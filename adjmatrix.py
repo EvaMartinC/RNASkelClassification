@@ -70,8 +70,7 @@ def procesar_segmentos(array_connected_branches, seg_type):
     return eje_a_nodos
 
 
-def find_adj_matrix(Gw,Gw2):
-    AM1= nx.adjacency_matrix(Gw,nodelist=list(range(1,len(Gw)+1))).toarray()
+def find_adj_matrix(AM1,Gw2):
     AM2= nx.adjacency_matrix(Gw2,nodelist=list(range(1,len(Gw2)+1))).toarray()
     n = len(AM1)
     best_perm = None
@@ -93,5 +92,6 @@ def find_adj_matrix(Gw,Gw2):
     best_AM2 = AM2[np.ix_(best_perm, best_perm)]
     # Imprimir la mejor asignación de nodos
     node_mapping = {i: best_perm[i] for i in range(n)}
+
     #print("Asignación óptima de nodos:", node_mapping)
-    return AM1,best_AM2
+    return min_cost,best_AM2
