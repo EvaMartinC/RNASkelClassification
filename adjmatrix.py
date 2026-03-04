@@ -89,35 +89,35 @@ def process_segments(array_connected_branches, seg_type):
 
 def find_adj_matrix_exact_pattern(AM1, AM2, tol=1e-12, max_isomorphisms=None, refine_node_signature=True):
     """
-    Encuentra una permutación de AM2 tal que:
-      - el patrón de índices no nulos (presencia de aristas) coincida EXACTAMENTE con AM1,
-      - entre todas las permutaciones válidas minimiza la suma de |AM1 - AM2_permuted| sobre los índices no nulos de AM1.
+    Fidns a permutation of AM2 such as:
+      - The pattern of non-zero elements (representing an edge) matches exactly with AM1
+      - Among all valid permutations, minimises the sum of |AM1 - AM2_permuted| over the non-zero indices of AM1.
 
     Args:
-      AM1, AM2: np.ndarray (n x n), matrices de adyacencia (pesadas).
-      tol: tolerancia para considerar un elemento "no nulo".
-      max_isomorphisms: si no es None, limitamos la exploración a ese número de isomorfismos.
-      refine_node_signature: si True, añadimos una firma (grado + vecinos) para reducir candidatos de emparejado.
+      AM1, AM2: np.ndarray (n x n), weigthed adjencency matrixes.
+      tol: tolerance to consider an element "non-zero" 
+      max_isomorphisms: if not None, it limits the number of isomorphs to be explored to that number 
+      refine_node_signature: if True, it adds a signature (grade + neighbors) to reduce the pairing candidates.
 
     Returns:
       (min_cost, best_AM2_permuted, best_perm)
-      - min_cost: float (infinito o None si no hay isomorfismo).
-      - best_AM2_permuted: AM2 permutada para alinear con AM1 (o None si no hay solución).
-      - best_perm: lista tal que best_perm[i] = j (nodo i de AM1 corresponde a nodo j de AM2).
+      - min_cost: float (infinite or None if there is no isomorphism).
+      - best_AM2_permuted: AM2 permutaded to align with AM1 (or None if there is no solution).
+      - best_perm: list such as best_perm[i] = j (node i of AM1 corresponds to node j of AM2).
     """
     AM1 = np.asarray(AM1)
     AM2 = np.asarray(AM2)
     if AM1.shape != AM2.shape or AM1.ndim != 2 or AM1.shape[0] != AM1.shape[1]:
-        raise ValueError("AM1 y AM2 deben ser matrices cuadradas de la misma dimensión")
+        raise ValueError("AM1 and AM2 must be square matrices of the same dimension.")
 
     n = AM1.shape[0]
     mask1 = np.abs(AM1) > tol
     mask2 = np.abs(AM2) > tol
 
-    # Detectar dirigido/undirigido por simetría (si ambas simétricas -> no dirigido)
+    # Detect directed/undirected by symmetry (if both symmetrical -> undirected)
     directed = not (np.allclose(AM1, AM1.T, atol=tol) and np.allclose(AM2, AM2.T, atol=tol))
 
-    # Construir grafos binarios (sólo indicando existencia de arista)
+    # Constructing binary graphs (only indicating the existence of edges)
     if directed:
         G1 = nx.DiGraph()
         G2 = nx.DiGraph()
@@ -143,11 +143,11 @@ def find_adj_matrix_exact_pattern(AM1, AM2, tol=1e-12, max_isomorphisms=None, re
                 if mask2[i, j]:
                     G2.add_edge(i, j)
 
-    # Si números de aristas distintos => imposible
+    # If different numbers of edges => impossible
     if G1.number_of_edges() != G2.number_of_edges():
         return None, None, None
 
-    # Añadir firmas nodales para podar (opcional pero suele acelerar mucho)
+    # Add nodal signatures to speed up the process 
     if refine_node_signature:
         if directed:
             outdeg1 = np.array([G1.out_degree(i) for i in range(n)], dtype=int)
@@ -192,7 +192,7 @@ def find_adj_matrix_exact_pattern(AM1, AM2, tol=1e-12, max_isomorphisms=None, re
     else:
         node_match = None
 
-    # Seleccionar la clase de matcher correcta
+    # Selecting the correct matcher class
     if directed:
         GM = isomorphism.DiGraphMatcher(G1, G2, node_match=node_match)
     else:
@@ -202,17 +202,17 @@ def find_adj_matrix_exact_pattern(AM1, AM2, tol=1e-12, max_isomorphisms=None, re
     best_perm = None
     best_AM2 = None
 
-    # Iterar isomorfismos (VF2); puede ser muchos si el grafo es muy simétrico
+    # Iterate isomorphisms (VF2); there may be many if the graph is very symmetrical.
     for k, mapping in enumerate(GM.isomorphisms_iter()):
-        # mapping: nodo de G1 -> nodo de G2
+        # mapping: node of G1 -> node of G2
         perm = [mapping[i] for i in range(n)]
         AM2p = AM2[np.ix_(perm, perm)]
 
-        # comprobación redundante: patrones deben coincidir exactamente
+        # redundant verification: patterns must match exactly
         if not np.array_equal(mask1, np.abs(AM2p) > tol):
             continue  # por seguridad, aunque VF2 ya debería garantizar esto
 
-        # calcular coste solamente sobre índices no nulos de AM1
+        # calculate cost only on non-zero indices of AM1
         mask = mask1
         cost = np.sum(np.abs(AM1[mask] - AM2p[mask]))
 
@@ -229,36 +229,3 @@ def find_adj_matrix_exact_pattern(AM1, AM2, tol=1e-12, max_isomorphisms=None, re
     else:
         return float(min_cost), best_AM2, best_perm
 
-# def find_adj_matrix(AM1,AM2):
-#     n = len(AM1)
-#     best_perm = None
-#     min_cost = float('inf')
-    
-
-#     # Probar todas las permutaciones posibles de nodos
-#     for perm in permutations(range(n)):  
-#         # Reordenar filas y columnas de A2 según la permutación
-#         AM2_permuted = AM2[np.ix_(perm, perm)]
-#         cost = 0
-        
-#         # Calcular la diferencia de pesos
-#         for i in range(n):
-#             for j in range(n):
-#                 if AM1[i][j] !=0 and AM2_permuted[i][j] !=0:
-#                     cost = cost + np.abs(AM1[i][j] - AM2_permuted[i][j])
-#                 elif AM1[i][j] ==0  and AM2_permuted[i][j] ==0:
-#                     continue
-#                 else:
-#                     cost = cost + 1000
-
-#         # Guardar la mejor permutación
-#         if cost < min_cost:
-#             min_cost = cost
-#             best_perm = perm
-            
-#     best_AM2 = AM2[np.ix_(best_perm, best_perm)]
-#     # Imprimir la mejor asignación de nodos
-#     node_mapping = {i: best_perm[i] for i in range(n)}
-
-#     #print("Asignación óptima de nodos:", node_mapping)
-#     return min_cost,best_AM2
